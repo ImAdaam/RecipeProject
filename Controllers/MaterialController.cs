@@ -21,22 +21,36 @@ namespace RecipeProject.Controllers
         [HttpGet("includeDeleted")]
         public IActionResult List(bool includeDeleted)
         {
-            var list = _materialService.GetAll(includeDeleted);
-            return Ok(list);
+            try
+            {
+                var list = _materialService.GetAll(includeDeleted);
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // GET: api/Materials/5
         [HttpGet("{id}")]
         public IActionResult GetMaterial(int id)
         {
-            var material = _materialService.GetById(id);
-
-            if (material == null)
+            try
             {
-                return NotFound();
-            }
+                var material = _materialService.GetById(id);
 
-            return Ok(material);
+                if (material == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(material);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
 
@@ -45,28 +59,35 @@ namespace RecipeProject.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMaterial(int id, Material material)
         {
-            if (id != material.Id)
-            {
-                return BadRequest();
-            }
-
             try
             {
-                await _materialService.UpdateMaterial(material);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (MaterialExists(id))
+                if (id != material.Id)
                 {
-                    return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    return BadRequest();
                 }
-                else
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                }
-            }
 
-            return NoContent();
+                try
+                {
+                    await _materialService.UpdateMaterial(material);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (MaterialExists(id))
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
+                    }
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // POST: api/Materials
@@ -74,14 +95,29 @@ namespace RecipeProject.Controllers
         [HttpPost]
         public async Task<ActionResult<Material>> PostMaterial(Material material)
         {
-            return await _materialService.AddMaterial(material);
+            try
+            {
+                return await _materialService.AddMaterial(material);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // DELETE: api/Materials/5
         [HttpDelete("{id}")]
-        public async void DeleteMaterial(int id)
+        public IActionResult DeleteMaterial(int id)
         {
-            await _materialService.DeleteMaterial(id);
+            try
+            {
+                _materialService.DeleteMaterial(id);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         private bool MaterialExists(int id)

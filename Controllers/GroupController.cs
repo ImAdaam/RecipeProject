@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
+using RecipeProject.Exceptions;
 using RecipeProject.Services;
 
 namespace RecipeProject.Controllers
@@ -19,22 +20,36 @@ namespace RecipeProject.Controllers
         [HttpGet("includeDeleted")]
         public IActionResult List(bool includeDeleted)
         {
-            var list = _groupService.GetAll(includeDeleted);
-            return Ok(list);
+            try
+            {
+                var list = _groupService.GetAll(includeDeleted);
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // GET: api/Groups/5
         [HttpGet("{id}")]
         public IActionResult GetGroup(int id)
         {
-            var group = _groupService.GetById(id);
-
-            if (group == null)
+            try
             {
-                return NotFound();
-            }
+                var group = _groupService.GetById(id);
 
-            return Ok(group);
+                if (group == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(group);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
 
@@ -43,28 +58,35 @@ namespace RecipeProject.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGroup(int id, Group group)
         {
-            if (id != group.Id)
-            {
-                return BadRequest();
-            }
-
             try
             {
-                await _groupService.UpdateGroup(group);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (GroupExists(id))
+                if (id != group.Id)
                 {
-                    return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    return BadRequest();
                 }
-                else
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                }
-            }
 
-            return NoContent();
+                try
+                {
+                    await _groupService.UpdateGroup(group);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (GroupExists(id))
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
+                    }
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // POST: api/Groups
@@ -72,14 +94,33 @@ namespace RecipeProject.Controllers
         [HttpPost]
         public async Task<ActionResult<Group>> PostGroup(Group group)
         {
-            return await _groupService.AddGroup(group);
+            try
+            {
+                return await _groupService.AddGroup(group);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // DELETE: api/Groups/5
         [HttpDelete("{id}")]
-        public async void DeleteGroup(int id)
+        public IActionResult DeleteGroup(int id)
         {
-            await _groupService.DeleteGroup(id);
+            try
+            {
+                _groupService.DeleteGroup(id);
+                return Ok();
+            }
+            catch (MethodNotAllowedException e)
+            {
+                return StatusCode(405, e.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         private bool GroupExists(int id)

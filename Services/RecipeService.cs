@@ -2,6 +2,7 @@
 using RecipeProject.Entity;
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.UnitOfWork;
+using RecipeProject.Exceptions;
 
 namespace RecipeProject.Services
 {
@@ -58,7 +59,7 @@ namespace RecipeProject.Services
             }
             else
             {
-                throw new NotImplementedException();
+                throw new MethodNotAllowedException("Cannot delete Recipe due to foreign key contraint");
             }
         }
         public Recipe? GetById(int id)

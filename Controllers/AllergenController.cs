@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
+using RecipeProject.Exceptions;
 using RecipeProject.Services;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -21,22 +22,36 @@ namespace RecipeProject.Controllers
         [HttpGet("includeDeleted")]
         public IActionResult List(bool includeDeleted)
         {
-            var list = _allergenService.GetAll(includeDeleted);
-            return Ok(list);
+            try
+            {
+                var list = _allergenService.GetAll(includeDeleted);
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // GET: api/Allergens/5
         [HttpGet("{id}")]
         public IActionResult GetAllergen(int id)
         {
-            var allergen = _allergenService.GetById(id);
-
-            if (allergen == null)
+            try
             {
-                return NotFound();
-            }
+                var allergen = _allergenService.GetById(id);
 
-            return Ok(allergen);
+                if (allergen == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(allergen);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
 
@@ -45,28 +60,35 @@ namespace RecipeProject.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutAllergen(int id, Allergen allergen)
         {
-            if (id != allergen.Id)
-            {
-                return BadRequest();
-            }
-
             try
             {
-                await _allergenService.UpdateAllergen(allergen);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (AllergenExists(id))
+                if (id != allergen.Id)
                 {
-                    return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    return BadRequest();
                 }
-                else
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                }
-            }
 
-            return NoContent();
+                try
+                {
+                    await _allergenService.UpdateAllergen(allergen);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (AllergenExists(id))
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
+                    }
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // POST: api/Allergens
@@ -74,14 +96,28 @@ namespace RecipeProject.Controllers
         [HttpPost]
         public async Task<ActionResult<Allergen>> PostAllergen(Allergen allergen)
         {
-            return await _allergenService.AddAllergen(allergen);
+            try { 
+                return await _allergenService.AddAllergen(allergen);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message});
+            }
         }
 
         // DELETE: api/Allergens/5
         [HttpDelete("{id}")]
-        public async void DeleteAllergen(int id)
+        public IActionResult DeleteAllergen(int id)
         {
-            await _allergenService.DeleteAllergen(id);
+            try
+            {
+                _allergenService.DeleteAllergen(id);
+                return Ok();
+            }
+            catch (MethodNotAllowedException e)
+            {
+                return StatusCode(405, e.Message);
+            }
         }
 
         private bool AllergenExists(int id)

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
 using RecipeProject.Services;
+using RecipeProject.Exceptions;
 
 namespace RecipeProject.Controllers
 {
@@ -22,36 +23,57 @@ namespace RecipeProject.Controllers
             [HttpGet("includeDeleted")]
             public IActionResult List(bool includeDeleted)
             {
-                var list = _recipeService.GetAll(includeDeleted);
-                return Ok(list);
+                try
+                {
+                    var list = _recipeService.GetAll(includeDeleted);
+                    return Ok(list);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message});
+                }
             }
 
             // GET: api/Recipes/5
             [HttpGet("{id}")]
             public IActionResult GetRecipe(int id)
             { 
-                var recipe = _recipeService.GetById(id);
-
-                if (recipe == null)
+                try
                 {
-                    return NotFound();
-                }
+                    var recipe = _recipeService.GetById(id);
 
-                return Ok(recipe);
+                    if (recipe == null)
+                    {
+                        return NotFound();
+                    }
+
+                    return Ok(recipe);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message });
+                }
             }
 
             // GET: api/Recipes/5
             [HttpGet("/full/{id}")]
             public IActionResult GetFullRecipe(int id)
             {
-                var recipe = _recipeService.GetByIdFull(id);
-
-                if (recipe == null)
+                try
                 {
-                    return NotFound();
-                }
+                    var recipe = _recipeService.GetByIdFull(id);
 
-                return Ok(recipe);
+                    if (recipe == null)
+                    {
+                        return NotFound();
+                    }
+
+                    return Ok(recipe);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message });
+                }
             }
 
             // PUT: api/Recipes/5
@@ -59,28 +81,35 @@ namespace RecipeProject.Controllers
             [HttpPut("{id}")]
             public async Task<IActionResult> PutRecipe(int id, Recipe recipe)
             {
-                if (id != recipe.Id)
-                {
-                    return BadRequest();
-                }
-
                 try
                 {
-                    await _recipeService.UpdateRecipe(recipe);
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (RecipeExists(id))
+                    if(id != recipe.Id)
                     {
-                        return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                        return BadRequest();
                     }
-                    else
-                    {
-                        return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                    }
-                }
 
-                return NoContent();
+                    try
+                    {
+                        await _recipeService.UpdateRecipe(recipe);
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        if (RecipeExists(id))
+                        {
+                            return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                        }
+                        else
+                        {
+                            return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
+                        }
+                    }
+
+                    return NoContent();
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message });
+                }
             }
 
             // POST: api/Recipes
@@ -88,14 +117,32 @@ namespace RecipeProject.Controllers
             [HttpPost]
             public async Task<ActionResult<Recipe>> PostRecipe(Recipe recipe)
             {
-                return await _recipeService.AddRecipe(recipe);
+                try
+                {
+                    return await _recipeService.AddRecipe(recipe);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message });
+                }
             }
 
             // DELETE: api/Recipes/5
             [HttpDelete("{id}")]
-            public async void DeleteRecipe(int id)
+            public IActionResult DeleteRecipe(int id)
             {
-                await _recipeService.DeleteRecipe(id);
+                try
+                {
+                    _recipeService.DeleteRecipe(id);
+                    return Ok();
+                }
+                catch (MethodNotAllowedException e){ 
+                    return StatusCode(405, e.Message);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { ex.Message });
+                }
             }
 
             private bool RecipeExists(int id)

@@ -2,6 +2,7 @@
 using RecipeProject.Entity;
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.UnitOfWork;
+using RecipeProject.Exceptions;
 
 namespace RecipeProject.Services
 {
@@ -37,16 +38,9 @@ namespace RecipeProject.Services
         public async Task UpdateIngredientCategory(IngredientCategory ingredientCategory)
         {
             var ingredientCategoryToUpdate = await _unitOfWork.GetRepository<IngredientCategory>().GetById(ingredientCategory.Id);
-            if( ingredientCategoryToUpdate.Ingredients != null ) 
-            {
-                ingredientCategoryToUpdate.Name = ingredientCategory.Name;
-                _unitOfWork.GetRepository<IngredientCategory>().Update(ingredientCategoryToUpdate);
-                await _unitOfWork.SaveChangesAsync();
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            ingredientCategoryToUpdate.Name = ingredientCategory.Name;
+            _unitOfWork.GetRepository<IngredientCategory>().Update(ingredientCategoryToUpdate);
+            await _unitOfWork.SaveChangesAsync();
         }
         public async Task DeleteIngredientCategory(int id)
         {
@@ -59,7 +53,7 @@ namespace RecipeProject.Services
             }
             else
             {
-                throw new NotImplementedException();
+                throw new MethodNotAllowedException("Cannot delete IngredientCategory due to foreign key contraint");
             }
         }
 
