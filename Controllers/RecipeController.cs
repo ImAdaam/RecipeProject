@@ -2,34 +2,46 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
 using RecipeProject.Services;
+using RecipeProject.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RecipeProject.Controllers
 {
-    public class RecipeController
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class RecipesController : ControllerBase
     {
-        [Route("api/[controller]")]
-        [ApiController]
-        public class RecipesController : ControllerBase
+        private readonly IRecipeService _recipeService;
+
+        public RecipesController(IRecipeService recipeService)
         {
-            private readonly IRecipeService _recipeService;
+            _recipeService = recipeService;
+        }
 
-            public RecipesController(IRecipeService recipeService)
-            {
-                _recipeService = recipeService;
-            }
-
-            // GET: api/Recipes/{includeDeleted}
-            [HttpGet("includeDeleted")]
-            public IActionResult List(bool includeDeleted)
+        // GET: api/Recipes/{includeDeleted}
+        [AllowAnonymous]
+        [HttpGet("includeDeleted")]
+        public IActionResult List(bool includeDeleted)
+        {
+            try
             {
                 var list = _recipeService.GetAll(includeDeleted);
                 return Ok(list);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
+        }
 
-            // GET: api/Recipes/5
-            [HttpGet("{id}")]
-            public IActionResult GetRecipe(int id)
-            { 
+        // GET: api/Recipes/5
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        public IActionResult GetRecipe(int id)
+        {
+            try
+            {
                 var recipe = _recipeService.GetById(id);
 
                 if (recipe == null)
@@ -39,10 +51,18 @@ namespace RecipeProject.Controllers
 
                 return Ok(recipe);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
+        }
 
-            // GET: api/Recipes/5
-            [HttpGet("/full/{id}")]
-            public IActionResult GetFullRecipe(int id)
+        // GET: api/Recipes/5
+        [HttpGet("/full/{id}")]
+        [AllowAnonymous]
+        public IActionResult GetFullRecipe(int id)
+        {
+            try
             {
                 var recipe = _recipeService.GetByIdFull(id);
 
@@ -53,11 +73,19 @@ namespace RecipeProject.Controllers
 
                 return Ok(recipe);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
+        }
 
-            // PUT: api/Recipes/5
-            // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-            [HttpPut("{id}")]
-            public async Task<IActionResult> PutRecipe(int id, Recipe recipe)
+        // PUT: api/Recipes/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Recipe writer")]
+        public async Task<IActionResult> PutRecipe(int id, Recipe recipe)
+        {
+            try
             {
                 if (id != recipe.Id)
                 {
@@ -82,26 +110,52 @@ namespace RecipeProject.Controllers
 
                 return NoContent();
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
+        }
 
-            // POST: api/Recipes
-            // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-            [HttpPost]
-            public async Task<ActionResult<Recipe>> PostRecipe(Recipe recipe)
+        // POST: api/Recipes
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPost]
+        [Authorize(Roles = "Admin,Recipe writer")]
+        public async Task<ActionResult<Recipe>> PostRecipe(Recipe recipe)
+        {
+            try
             {
                 return await _recipeService.AddRecipe(recipe);
             }
-
-            // DELETE: api/Recipes/5
-            [HttpDelete("{id}")]
-            public async void DeleteRecipe(int id)
+            catch (Exception ex)
             {
-                await _recipeService.DeleteRecipe(id);
-            }
-
-            private bool RecipeExists(int id)
-            {
-                return _recipeService.GetById(id) != null;
+                return StatusCode(500, new { ex.Message });
             }
         }
+
+        // DELETE: api/Recipes/5
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult DeleteRecipe(int id)
+        {
+            try
+            {
+                _recipeService.DeleteRecipe(id);
+                return Ok();
+            }
+            catch (MethodNotAllowedException e)
+            {
+                return StatusCode(405, e.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
+        }
+
+        private bool RecipeExists(int id)
+        {
+            return _recipeService.GetById(id) != null;
+        }
     }
+
 }

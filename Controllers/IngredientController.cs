@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
+using RecipeProject.Exceptions;
 using RecipeProject.Services;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -9,6 +11,7 @@ namespace RecipeProject.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class IngredientController : ControllerBase
     {
         private readonly IIngredientService _ingredientService;
@@ -21,66 +24,109 @@ namespace RecipeProject.Controllers
         [HttpGet("includeDeleted")]
         public IActionResult List(bool includeDeleted)
         {
-            var list = _ingredientService.GetAll(includeDeleted);
-            return Ok(list);
+            try
+            {
+                var list = _ingredientService.GetAll(includeDeleted);
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // GET: api/Ingredients/5
         [HttpGet("{id}")]
         public IActionResult GetIngredient(int id)
         {
-            var ingredient = _ingredientService.GetById(id);
-
-            if (ingredient == null)
+            try
             {
-                return NotFound();
-            }
+                var ingredient = _ingredientService.GetById(id);
 
-            return Ok(ingredient);
+                if (ingredient == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(ingredient);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // POST: api/Ingredients
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
+        [Authorize(Roles = "Admin,Recipe writer")]
         public async Task<ActionResult<Ingredient>> PostIngredient(Ingredient ingredient)
         {
-            return await _ingredientService.AddIngredient(ingredient);
+            try
+            {
+                return await _ingredientService.AddIngredient(ingredient);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // PUT: api/Ingredients/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Recipe writer")]
         public async Task<IActionResult> PutIngredient(int id, Ingredient ingredient)
         {
-            if (id != ingredient.Id)
-            {
-                return BadRequest();
-            }
-
             try
             {
-                await _ingredientService.UpdateIngredient(ingredient);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (IngredientExists(id))
+                if (id != ingredient.Id)
                 {
-                    return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    return BadRequest();
                 }
-                else
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                }
-            }
 
-            return NoContent();
+                try
+                {
+                    await _ingredientService.UpdateIngredient(ingredient);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (IngredientExists(id))
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
+                    }
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // DELETE: api/Ingredients/5
         [HttpDelete("{id}")]
-        public async void DeleteIngredient(int id)
+        [Authorize(Roles = "Admin")]
+        public IActionResult DeleteIngredient(int id)
         {
-            await _ingredientService.DeleteIngredient(id);
+            try
+            {
+                _ingredientService.DeleteIngredient(id);
+                return Ok();
+            }
+            catch (MethodNotAllowedException e)
+            {
+                return StatusCode(405, e.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         private bool IngredientExists(int id)
@@ -90,10 +136,19 @@ namespace RecipeProject.Controllers
 
         // GET: api/Ingredients/InRecipes/5
         [HttpGet("/InRecipes/{id}")]
+        [Authorize(Roles = "Recipe writer,Recipe reader")]
+        [Authorize(Policy = "RequireActiveUser")]
         public IActionResult GetAllRecipesContaining(int id)
         {
-            var list = _ingredientService.GetAllRecipesContaining(id);
-            return Ok(list);
+            try
+            {
+                var list = _ingredientService.GetAllRecipesContaining(id);
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
     }
 }

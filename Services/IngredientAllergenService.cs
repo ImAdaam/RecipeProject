@@ -7,44 +7,57 @@ namespace RecipeProject.Services
 {
     public interface IIngredientAllergenService
     {
-        public IQueryable<IngredientAllergen> GetAll(bool includeDeleted);
+        public IQueryable<IngredientAllergen> GetAll();
         public Task<IngredientAllergen> AddIngredientAllergen(IngredientAllergen ingredientAllergen);
         public Task UpdateIngredientAllergen(IngredientAllergen ingredientAllergen);
-        public Task DeleteIngredientAllergen(int id);
-        public IngredientAllergen? GetById(int id);
+        public Task DeleteIngredientAllergen(int ingredientId, int allergenId);
+        public IngredientAllergen? GetById(int ingredientId, int allergenId);
     }
     public class IngredientAllergenService : IIngredientAllergenService
     {
-        private readonly RecipeDbContext _dbContext;
         private readonly IUnitOfWork _unitOfWork;
+        protected readonly DbSet<IngredientAllergen> DbSet;
         public IngredientAllergenService(RecipeDbContext dbContext, IUnitOfWork unitOfWork)
         {
-            _dbContext = dbContext;
             _unitOfWork = unitOfWork;
+            DbSet = dbContext.Set<IngredientAllergen>();
         }
-        public Task<IngredientAllergen> AddIngredientAllergen(IngredientAllergen ingredientAllergen)
+        public IQueryable<IngredientAllergen> GetAll()
         {
-            throw new NotImplementedException();
+            return (IQueryable<IngredientAllergen>)_unitOfWork.Context()
+                              .Set<IngredientAllergen>()
+                              .ToList();
         }
-
-        public Task DeleteIngredientAllergen(int id)
+        public async Task<IngredientAllergen> AddIngredientAllergen(IngredientAllergen ingredientAllergen)
         {
-            throw new NotImplementedException();
-        }
+            var savedEntity = await DbSet.AddAsync(ingredientAllergen);
 
-        public IQueryable<IngredientAllergen> GetAll(bool includeDeleted)
-        {
-            throw new NotImplementedException();
-        }
+            IngredientAllergen savedIngredientAllergen = savedEntity.Entity;
+            await _unitOfWork.SaveChangesAsync();
 
-        public IngredientAllergen? GetById(int id)
-        {
-            throw new NotImplementedException();
+            return savedIngredientAllergen;
         }
-
         public Task UpdateIngredientAllergen(IngredientAllergen ingredientAllergen)
         {
             throw new NotImplementedException();
+        }
+        public async Task DeleteIngredientAllergen(int ingredientId, int allergenId)
+        {
+            var ingredientAllergenToDelete = this.GetById(ingredientId,allergenId);
+            if (ingredientAllergenToDelete != null)
+            {
+                DbSet.Remove(ingredientAllergenToDelete);
+            }
+            await _unitOfWork.SaveChangesAsync();
+
+        }
+        public IngredientAllergen? GetById(int ingredientId, int allergenId)
+        {
+            return _unitOfWork.Context()
+                              .Set<IngredientAllergen>()
+                              .IgnoreQueryFilters()
+                              .Where(e => e.IngredientId == ingredientId && e.AllergenId == allergenId)
+                              .FirstOrDefault();
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RecipeProject.DbContext;
 using RecipeProject.Entity;
+using RecipeProject.Exceptions;
 using RecipeProject.UnitOfWork;
 
 namespace RecipeProject.Services
@@ -51,7 +52,7 @@ namespace RecipeProject.Services
             }
             else
             {
-                throw new NotImplementedException();
+                throw new MethodNotAllowedException("Cannot delete Group due to foreign key contraint");
             }
         }
         public Group? GetById(int id)

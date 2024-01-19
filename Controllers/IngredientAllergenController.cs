@@ -3,78 +3,66 @@ using Microsoft.EntityFrameworkCore;
 using RecipeProject.Entity;
 using RecipeProject.Services;
 using RecipeProject.DbContext;
+using RecipeProject.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RecipeProject.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class IngredientAllergensController : ControllerBase
     {
-        private readonly RecipeDbContext _context;
+        //private readonly RecipeDbContext _context;
+        private readonly IIngredientAllergenService _ingredientAllergenService;
 
-        public IngredientAllergensController(RecipeDbContext context)
+        public IngredientAllergensController(IIngredientAllergenService ingredientAllergenService)
         {
-            _context = context;
+            _ingredientAllergenService = ingredientAllergenService;
         }
 
         // GET: api/IngredientAllergens
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<IngredientAllergen>>> GetIngredientAllergens()
+        public ActionResult<IEnumerable<IngredientAllergen>> GetIngredientAllergens()
         {
-            if (_context.ingredientAllergens == null)
+            try
             {
-                return NotFound();
+                var list = _ingredientAllergenService.GetAll();
+                return Ok(list);
             }
-            return await _context.ingredientAllergens.ToListAsync();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
         // GET: api/IngredientAllergens/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<IngredientAllergen>> GetIngredientAllergen(int id)
+        public ActionResult<IngredientAllergen> GetIngredientAllergen(int ingredientId, int allergenId)
         {
-            if (_context.ingredientAllergens == null)
+            try
             {
-                return NotFound();
-            }
-            var ingredientAllergen = await _context.ingredientAllergens.FindAsync(id);
+                var ingredientAllergen = _ingredientAllergenService.GetById(ingredientId, allergenId);
 
-            if (ingredientAllergen == null)
+                if (ingredientAllergen == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(ingredientAllergen);
+            }
+            catch (Exception ex)
             {
-                return NotFound();
+                return StatusCode(500, new { ex.Message });
             }
-
-            return ingredientAllergen;
         }
 
         // PUT: api/IngredientAllergens/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutIngredientAllergen(int id, IngredientAllergen ingredientAllergen)
+        public Task<IActionResult> PutIngredientAllergen(int id, IngredientAllergen ingredientAllergen)
         {
-            if (id != ingredientAllergen.AllergenId)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(ingredientAllergen).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!IngredientAllergenExists(id))
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: record already in db" });
-                }
-                else
-                {
-                    return StatusCode(500, new { Message = "Internal Server Error: sql server error" });
-                }
-            }
-
-            return NoContent();
+            throw new NotImplementedException();
         }
 
         // POST: api/IngredientAllergens
@@ -82,53 +70,38 @@ namespace RecipeProject.Controllers
         [HttpPost]
         public async Task<ActionResult<IngredientAllergen>> PostIngredientAllergen(IngredientAllergen ingredientAllergen)
         {
-            if (_context.ingredientAllergens == null)
-            {
-                return Problem("Entity set 'RecipeDbContext.IngredientAllergens'  is null.");
-            }
-            _context.ingredientAllergens.Add(ingredientAllergen);
             try
             {
-                await _context.SaveChangesAsync();
+                return await _ingredientAllergenService.AddIngredientAllergen(ingredientAllergen);
             }
-            catch (DbUpdateException)
+            catch (Exception ex)
             {
-                if (IngredientAllergenExists(ingredientAllergen.AllergenId))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(500, new { ex.Message });
             }
-
-            return CreatedAtAction("GetIngredientAllergen", new { id = ingredientAllergen.AllergenId }, ingredientAllergen);
         }
 
         // DELETE: api/IngredientAllergens/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteIngredientAllergen(int id)
+        public IActionResult DeleteIngredientAllergen(int ingredientId, int allergenId)
         {
-            if (_context.ingredientAllergens == null)
+            try
             {
-                return NotFound();
+                _ingredientAllergenService.DeleteIngredientAllergen(ingredientId, allergenId);
+                return Ok();
             }
-            var ingredientAllergen = await _context.ingredientAllergens.FindAsync(id);
-            if (ingredientAllergen == null)
+            catch (MethodNotAllowedException e)
             {
-                return NotFound();
+                return StatusCode(405, e.Message);
             }
-
-            _context.ingredientAllergens.Remove(ingredientAllergen);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { ex.Message });
+            }
         }
 
-        private bool IngredientAllergenExists(int id)
+        private bool IngredientAllergenExists(int ingredientId, int allergenId)
         {
-            return (_context.ingredientAllergens?.Any(e => e.AllergenId == id)).GetValueOrDefault();
+            return _ingredientAllergenService.GetById(ingredientId, allergenId) != null;
         }
     }
 }
